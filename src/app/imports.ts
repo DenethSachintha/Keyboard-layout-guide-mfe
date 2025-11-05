@@ -98,12 +98,14 @@ import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
 import { DrawerModule } from 'primeng/drawer';
 import { KeyFilterModule } from 'primeng/keyfilter';
+import { BindModule } from 'primeng/bind';
 
     
 
     @NgModule({
         imports: [
     AvatarModule,
+    BindModule,
     KeyFilterModule,
     AvatarGroupModule,
     AnimateOnScrollModule,
@@ -206,6 +208,7 @@ import { KeyFilterModule } from 'primeng/keyfilter';
           exports: [
     TabsModule,
     AvatarModule,
+    BindModule,
     AvatarGroupModule,
     AnimateOnScrollModule,
     FormsModule,

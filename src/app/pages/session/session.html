@@ -1,0 +1,27 @@
+<div class="session-container">
+  <h3>Typing Session</h3>
+
+  <div class="word-display">
+    <span 
+      *ngFor="let char of wordArray(); let i = index"
+      [class.correct]="result()[i] === 'correct'"
+      [class.incorrect]="result()[i] === 'incorrect'"
+      [class.pending]="result()[i] === 'pending'">
+      {{ char }}
+    </span>
+  </div>
+
+  <div class="debug">
+    <p><b>Current Index:</b> {{ currentIndex() }}</p>
+    <p><b>User Input:</b> {{ userInput().join('') }}</p>
+  </div>
+</div>
+
+<!-- Fixed bottom keyboard layout -->
+<div class="keyboard-wrapper">
+  <app-layout-view
+    [keyMapping]="keyMapping"
+    [isShiftActive]="isShiftActive()"
+    [expectedKeyId]="expectedKeyId()">
+  </app-layout-view>
+</div>

@@ -1,0 +1,44 @@
+.session-container {
+  font-family: monospace;
+  padding: 1rem;
+}
+
+.word-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.word-display span {
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.correct {
+  background-color: #4caf50;
+  color: white;
+}
+
+.incorrect {
+  background-color: #f44336;
+  color: white;
+}
+
+.pending {
+  background-color: #eee;
+  color: #444;
+}
+
+
+.keyboard-wrapper {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: fit-content;
+  margin-bottom: 1rem;
+  z-index: 100;
+}
