@@ -1,7 +1,7 @@
-import { Component, Input, signal, computed } from '@angular/core';
+import { Component, Input, signal, computed, SimpleChanges, OnChanges, OnInit } from '@angular/core';
 import { ImportsModule } from '../../../imports';
 import { CommonModule } from '@angular/common';
-import { KeyMapping } from '../../../models/KeyMapping';
+import { KeyMapping } from '../../../models/key-mapping';
 
 @Component({
   selector: 'app-layout-view',
@@ -9,12 +9,47 @@ import { KeyMapping } from '../../../models/KeyMapping';
   templateUrl: './layout-view.html',
   styleUrl: './layout-view.scss',
 })
-export class LayoutView {
-  @Input() keyMapping: KeyMapping[] = [];
+export class LayoutView implements OnInit, OnChanges {
+  private _keyMapping: KeyMapping[] = [];
+
+  @Input()
+  set keyMapping(value: KeyMapping[]) {
+    this._keyMapping = value || [];
+    if (this._keyMapping.length) {
+      this.processKeyMapping();
+      console.log('Processing keyMapping via setter:', this._keyMapping);
+    }
+  }
+  get keyMapping(): KeyMapping[] {
+    return this._keyMapping;
+  }
+
   @Input() isShiftActive = false;
   @Input() expectedKeyId: number | null = null;
 
   activeKeys = signal<Record<number, boolean>>({});
+
+  ngOnInit(): void {
+    if (this.keyMapping.length) {
+      this.processKeyMapping();
+      console.log('Processing keyMapping on init:', this.keyMapping);
+    }
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['keyMapping'] && changes['keyMapping'].currentValue?.length) {
+      this.processKeyMapping();
+      console.log('Processing keyMapping via ngOnChanges:', this.keyMapping);
+    }
+  }
+
+  private processKeyMapping(): void {
+    const newActiveKeys: Record<number, boolean> = {};
+    for (const key of this.keyMapping) {
+      newActiveKeys[key.id] = false;
+    }
+    this.activeKeys.set(newActiveKeys);
+  }
 
   get keyboardRows(): KeyMapping[][] {
     const rowBreaks = [14, 28, 41, 53, 61];
@@ -38,10 +73,9 @@ export class LayoutView {
   }
 
   shouldShowShiftSymbol(key: KeyMapping): boolean {
-    // show top-left shifted symbol if it's not a letter
     return (
       !!key.virtualShift &&
-      !/^[a-zA-Z]$/.test(key.virtualKey) && // not a single letter
+      !/^[a-zA-Z]$/.test(key.virtualKey) &&
       key.virtualKey.trim() !== ''
     );
   }

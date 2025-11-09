@@ -1,11 +1,7 @@
-<p-toolbar [style]="{ 'border-radius': '3rem', 'padding': '1rem 2.5rem 1rem 1.5rem' }">
+<p-toolbar [style]="{ 'border-radius': '3rem', 'padding': '1rem 2.5rem 1rem 1.5rem', 'margin-bottom': '2rem' }">
   <ng-template #start>
     <div class="flex items-center gap-2">
       <h3>Typing Session</h3>
-
-      <p-button label="Files" text plain />
-      <p-button label="Edit" text plain />
-      <p-button label="View" text plain />
     </div>
   </ng-template>
 
@@ -29,26 +25,66 @@
     </div>
   </ng-template>
 </p-toolbar>
+<div class="card">
+  <!-- Stepper -->
+  <p-stepper [value]="currentStep()" [linear]="true" class="basis-[50rem]">
+    <p-step-list (click)="onStepClick($event)">
+      <p-step *ngFor="let s of sentences(); let idx = index" [value]="idx + 1">
+        Step
+      </p-step>
+    </p-step-list>
 
+    <p-step-panels>
+      <p-step-panel *ngFor="let s of sentences(); let idx = index" [value]="idx">
+        <ng-template #content let-activateCallback="activateCallback">
+          <div class="flex flex-col gap-4">
+            <div
+              class="border-2 border-dashed border-surface-200 dark:border-surface-700 rounded bg-surface-50 dark:bg-surface-950 p-4">
+              <!-- Sentence display -->
+              <div class="mb-3">
+                <strong>Step {{ idx + 1 }}:</strong>
+                <div class="sentence-text mt-2">
+                  <span *ngFor="let ch of (wordArray()); let i = index" style="padding: 2px;"
+                    [class.correct]="result()[i] === 'correct'" [class.incorrect]="result()[i] === 'incorrect'"
+                    [class.pending]="result()[i] === 'pending'">
+                    {{ ch }}
+                  </span>
+                </div>
+              </div>
 
+              <!-- Typing area (readonly display; typing captured via document key events) -->
+              <div class="typing-area mt-4 p-3 border rounded bg-white">
+                <div class="typed-text">
+                  <span *ngFor="let ch of userInput(); let i = index">
+                    {{ ch || '\u00A0' }}
+                  </span>
+                </div>
+                <p class="hint text-sm mt-2">Start typing to begin (session auto-starts).</p>
+              </div>
 
-<div class="session-container">
-  <!-- Text display -->
-  <div class="word-display">
-    <span *ngFor="let char of wordArray(); let i = index" [class.correct]="result()[i] === 'correct'"
-      [class.incorrect]="result()[i] === 'incorrect'" [class.pending]="result()[i] === 'pending'">
-      {{ char }}
-    </span>
-  </div>
-
-  <div class="debug">
-    <p><b>Current Index:</b> {{ currentIndex() }}</p>
-    <p><b>User Input:</b> {{ userInput().join('') }}</p>
-  </div>
+              <!-- Step stats (if completed) -->
+              <!-- <div class="step-stats mt-3" *ngIf="sessionRecords.length > 0 && sessionRecords | slice:-1:">
+            </div> -->
+            </div>
+          </div>
+        </ng-template>
+      </p-step-panel>
+    </p-step-panels>
+  </p-stepper>
+</div>
+<!-- Debug / Records panel -->
+<div class="mt-4">
+  <h4>Session Records</h4>
+  <ul>
+    <li *ngFor="let rec of sessionRecords">
+      Step {{ rec.stepIndex + 1 }} — Words WPM: {{ rec.wpm }} — Accuracy: {{ rec.accuracy }}% — Time:
+      {{ rec.stepTimeSeconds }}s — {{ rec.dateTime }}
+    </li>
+  </ul>
 </div>
 
 <!-- Keyboard layout view -->
-<div class="keyboard-wrapper">
+<div class="keyboard-wrapper mt-4">
   <app-layout-view [keyMapping]="keyMapping" [isShiftActive]="isShiftActive()" [expectedKeyId]="expectedKeyId()">
   </app-layout-view>
 </div>
