@@ -1,27 +1,229 @@
+// It should handle session start, pause, resume, and end functionalities. When ui initiates start button appears. 
+// after start this button disappear and load pause and end buttons. if user click pause during session pause button will be disapaer and load resume button alongside with end button. 
+// There will be a reset button after session start to end //  buttons will be handled this manner Come up  with suitable behavior for these buttons and their placements.(somthing LIKE reset will be disapear after licking start and will appear again))
+// // wpm calculate does not matter weather words are correct or not just finishing is enough. WPM uses Number of words not number of letters 
+// // Additionally, it should track the duration of the session and the number of letters typed correctly. 
+//  session duration should calculate from start to end in seconds excluding pause time .
+// // then generate typing speed and accuracy statistics at the end of the session. Just Console log for now.
+
+
+// alongside that each session will be provided related configurations like time session id, session name,
+//  expepted words per minute(wpmTarget), and accuracy targets(accuracyTarget), previous best accuracy (bestAccuracy),
+// previous best wpm (bestWpm), number of times Attented (countAttented), 
+// Whether session previously completed (isCompleted), Completed time (timeCompleted), 
+// whether session previously done( isActive), .
+
+/* {
+      moduleId: 2,
+      tutorialId: 1,
+      title: 'Basic Words',
+      description: 'Practice short common words to improve rhythm and accuracy.',
+      isCompleted: false,
+      estimatedTime: '15 mins',
+      imageUrl: 'https://primefaces.org/cdn/primeng/images/card-ng.jpg',
+      isActive: false,
+      moduleWiseRequiredAccuracy: 60,
+      moduleWiseRequiredWPM: 20
+    }, */
+
+// session means a single practice attempt of a module
+// we need to UI implementations for a single session page
+// these sessions are linked to modules
+// hardcode some sample sessions data here
+// use primeng components similar to other pages
+// no buttons for navigation needed here
+// session has following details:
+// - session id
+// - module id  
+// - acccuracy
+// - wpm
+// - time taken
+// - date time
+// - completed (boolean)
 import { Component, HostListener, signal, computed } from '@angular/core';
 import { LayoutView } from '../../common/components/layout-view/layout-view';
 import { CommonModule } from '@angular/common';
-export interface KeyMapping {
-  id: number;
-  systemKey: string;
-  virtualKey: string;
-  systemShift?: string; // new optional field for Shift output
-  virtualShift?: string; // new optional field for Shift output
-}
+import { KeyMapping } from '../../models/KeyMapping';
+import { ImportsModule } from '../../imports';
+
 @Component({
   selector: 'app-session',
+  standalone: true,
+  imports: [LayoutView,ImportsModule, CommonModule],
   templateUrl: './session.html',
-  styleUrls: ['./session.scss'],
-  imports: [LayoutView, CommonModule],
+  styleUrls: ['./session.scss']
 })
 export class Session {
+  // --- Reactive state ---
   wordArray = signal<string[]>([]);
   userInput = signal<string[]>([]);
   currentIndex = signal<number>(0);
   isShiftActive = signal<boolean>(false);
   expectedKeyId = signal<number | null>(null);
 
-  keyMapping: KeyMapping[] = [
+  // --- Session control flags ---
+  isStarted = signal<boolean>(false);
+  isPaused = signal<boolean>(false);
+  isEnded = signal<boolean>(false);
+
+  // --- Timing and stats ---
+  startTime: number | null = null;
+  pausedTime: number | null = null;
+  totalPausedDuration = 0;
+
+  result = computed(() =>
+    this.wordArray().map((char, i) => {
+      const inputChar = this.userInput()[i];
+      if (inputChar === undefined || inputChar === '') return 'pending';
+      return inputChar === char ? 'correct' : 'incorrect';
+    })
+  );
+
+  constructor() {
+    const exampleText = 'Type this example text 123!@#';
+    this.wordArray.set(exampleText.split(''));
+  }
+
+  // --- Controls ---
+  startSession() {
+    this.resetSession();
+    this.isStarted.set(true);
+    this.isPaused.set(false);
+    this.isEnded.set(false);
+    this.startTime = performance.now();
+    console.log('🟢 Session started');
+    this.updateExpectedKey();
+  }
+
+  pauseSession() {
+    if (!this.isStarted() || this.isPaused()) return;
+    this.isPaused.set(true);
+    this.pausedTime = performance.now();
+    console.log('⏸️ Session paused');
+  }
+
+  resumeSession() {
+    if (!this.isPaused()) return;
+    this.isPaused.set(false);
+    if (this.pausedTime) {
+      this.totalPausedDuration += performance.now() - this.pausedTime;
+      this.pausedTime = null;
+    }
+    console.log('▶️ Session resumed');
+  }
+
+  endSession() {
+    if (!this.isStarted() || this.isEnded()) return;
+    this.isEnded.set(true);
+    this.isStarted.set(false);
+    this.isPaused.set(false);
+
+    const endTime = performance.now();
+    const duration = (endTime - (this.startTime ?? 0) - this.totalPausedDuration) / 1000; // seconds
+
+    this.generateStats(duration);
+  }
+
+  resetSession() {
+    this.userInput.set([]);
+    this.currentIndex.set(0);
+    this.expectedKeyId.set(null);
+    this.isStarted.set(false);
+    this.isPaused.set(false);
+    this.isEnded.set(false);
+    this.startTime = null;
+    this.pausedTime = null;
+    this.totalPausedDuration = 0;
+    console.log('🔄 Session reset');
+  }
+
+  // --- Keyboard events ---
+  @HostListener('document:keydown', ['$event'])
+  onKeyDown(event: KeyboardEvent) {
+    if (!this.isStarted() || this.isPaused()) return;
+
+    if (event.key === 'Shift') {
+      this.isShiftActive.set(true);
+      return;
+    }
+
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      return;
+    }
+
+    if (event.key === 'Backspace') {
+      this.currentIndex.update((i) => Math.max(0, i - 1));
+      const arr = [...this.userInput()];
+      arr[this.currentIndex()] = '';
+      this.userInput.set(arr);
+      this.updateExpectedKey();
+      return;
+    }
+
+    if (event.key.length === 1) {
+      let mapping;
+      let mappedChar;
+
+      if (!this.isShiftActive()) {
+        mapping = this.keyMapping.find((m) => m.systemKey === event.key);
+      } else {
+        mapping = this.keyMapping.find((m) => m.systemShift === event.key);
+      }
+
+      if (!mapping) return;
+
+      mappedChar = !this.isShiftActive()
+        ? mapping.virtualKey
+        : mapping.virtualShift ?? mapping.virtualKey;
+
+      const arr = [...this.userInput()];
+      arr[this.currentIndex()] = mappedChar ?? '';
+      this.userInput.set(arr);
+      this.currentIndex.update((i) => i + 1);
+      this.updateExpectedKey();
+
+      // Auto-end when all chars typed
+      if (this.currentIndex() >= this.wordArray().length) {
+        this.endSession();
+      }
+    }
+  }
+
+  @HostListener('document:keyup', ['$event'])
+  onKeyUp(event: KeyboardEvent) {
+    if (event.key === 'Shift') this.isShiftActive.set(false);
+  }
+
+  // --- Helpers ---
+  updateExpectedKey() {
+    const nextChar = this.wordArray()[this.currentIndex()];
+    if (!nextChar) {
+      this.expectedKeyId.set(null);
+      return;
+    }
+    const found = this.keyMapping.find(
+      (m) => m.virtualKey.toLowerCase() === nextChar.toLowerCase()
+    );
+    this.expectedKeyId.set(found ? found.id : null);
+  }
+
+  generateStats(durationSeconds: number) {
+    const minutes = durationSeconds / 60;
+    const totalWords = this.wordArray().join('').split(' ').length;
+    const correctCount = this.result().filter((r) => r === 'correct').length;
+    const accuracy = ((correctCount / this.wordArray().length) * 100).toFixed(2);
+    const wpm = (totalWords / minutes).toFixed(2);
+
+    console.log('🏁 Session Ended');
+    console.log(`Duration: ${durationSeconds.toFixed(1)}s`);
+    console.log(`Words per Minute (WPM): ${wpm}`);
+    console.log(`Accuracy: ${accuracy}%`);
+    console.log(`Correct letters: ${correctCount}/${this.wordArray().length}`);
+  }
+
+
+    keyMapping: KeyMapping[] = [
   // Row 1
   { id: 1, systemKey: 'Escape', virtualKey: 'Esc' },
   { id: 2, systemKey: '1', virtualKey: '1', systemShift: '!', virtualShift: '!' },
@@ -94,100 +296,4 @@ export class Session {
   { id: 61, systemKey: 'ControlRight', virtualKey: 'Ctrl' },
 ];
 
-  result = computed(() =>
-    this.wordArray().map((char, i) => {
-      const inputChar = this.userInput()[i];
-      if (inputChar === undefined || inputChar === '') return 'pending';
-      return inputChar === char ? 'correct' : 'incorrect';
-    })
-  );
-
-  constructor() {
-    const exampleText = 'Type this example text 123!@#';
-    this.wordArray.set(exampleText.split(''));
-    this.updateExpectedKey();
-  }
-
-  @HostListener('document:keydown', ['$event'])
-  onKeyDown(event: KeyboardEvent) {
-    console.log('Key Down:', event.key);
-    if (event.key === 'Shift') {
-      this.isShiftActive.set(true);
-      return;
-    }
-
-    if (event.key === 'Tab') {
-      event.preventDefault();
-      return;
-    }
-
-    if (event.key === 'Backspace') {
-      this.currentIndex.update((i) => Math.max(0, i - 1));
-      const arr = [...this.userInput()];
-      arr[this.currentIndex()] = '';
-      this.userInput.set(arr);
-      this.updateExpectedKey(); // update highlight
-      return;
-    }
-
-    if (event.key.length === 1) {
-      let mapping;
-      let mappedChar;
-      if (!this.isShiftActive()) {
-        mapping = this.keyMapping.find((m) => m.systemKey === event.key);
-        console.log('Mapping found:', mapping?.systemKey);
-      }
-      if (this.isShiftActive()) {
-        mapping = this.keyMapping.find((m) => m.systemShift === event.key);
-        console.log('Mapping found:', mapping?.systemShift);
-      }
-      if (!mapping) return;
-
-      if (!this.isShiftActive()) {
-        mappedChar = mapping.virtualKey;
-      }
-      if (this.isShiftActive() && mapping.systemShift && mapping.virtualShift) {
-        mappedChar = mapping.virtualShift;
-      }
-      console.log('mappedChar found:', mappedChar);
-
-      const arr = [...this.userInput()];
-      arr[this.currentIndex()] = mappedChar ?? '';
-      this.userInput.set(arr);
-      this.currentIndex.update((i) => i + 1);
-      this.updateExpectedKey();
-    }
-  }
-
-  @HostListener('document:keyup', ['$event'])
-  onKeyUp(event: KeyboardEvent) {
-    if (event.key === 'Shift') {
-      this.isShiftActive.set(false);
-    }
-  }
-
-  updateExpectedKey() {
-    const nextChar = this.wordArray()[this.currentIndex()];
-    if (!nextChar) {
-      this.expectedKeyId.set(null);
-      return;
-    }
-
-    const found = this.keyMapping.find(
-      (m) => m.virtualKey.toLowerCase() === nextChar.toLowerCase()
-    );
-    this.expectedKeyId.set(found ? found.id : null);
-  }
-
-  resetSession() {
-    this.userInput.set([]);
-    this.currentIndex.set(0);
-    this.expectedKeyId.set(null);
-  }
 }
-
-// It should handle session start, pause, resume, and end functionalities.
-// Additionally, it should track the duration of the session and the number of words typed.
-// then generate typing speed and accuracy statistics at the end of the session.
-// alongside that each session will be provided related configurations like time session id, session name, expepted words per minute(wpmTarget), and accuracy targets(accuracyTarget), previous best accuracy (bestAccuracy),
-// previous best wpm (bestWpm), number of times Attented (countAttented), Whether session previously completed (isCompleted), Completed time (timeCompleted), whether session previously done( isActive), .

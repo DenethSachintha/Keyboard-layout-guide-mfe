@@ -1,1 +1,108 @@
-<p>sessions works!</p>
+<p-toolbar
+  [style]="{
+    'border-radius': '3rem',
+    'padding': '1rem 2.5rem 1rem 1.5rem',
+    'margin-bottom': '2rem'
+  }"
+>
+  <ng-template #start>
+    <div class="flex items-center gap-2">
+      <span class="page-title">Module Sessions</span>
+    </div>
+  </ng-template>
+  <ng-template #center></ng-template>
+  <ng-template #end></ng-template>
+</p-toolbar>
+
+<div class="card">
+  <p-dataview #dv [value]="sessions" [layout]="layout">
+    <ng-template #header>
+      <div class="flex justify-end">
+        <p-selectbutton [(ngModel)]="layout" [options]="options" [allowEmpty]="false">
+          <ng-template #item let-item>
+            <i class="pi" [ngClass]="{ 'pi-bars': item === 'list', 'pi-table': item === 'grid' }"></i>
+          </ng-template>
+        </p-selectbutton>
+      </div>
+    </ng-template>
+
+    <!-- ✅ LIST VIEW -->
+    <ng-template #list let-items>
+      <div *ngFor="let session of items; let first = first">
+        <div
+          class="flex flex-col sm:flex-row sm:items-center p-6 gap-4"
+          [ngClass]="{ 'border-t border-surface-200 dark:border-surface-700': !first }"
+        >
+          <div class="md:w-32 relative text-center">
+            <p-tag
+              [value]="session.completed ? 'Completed' : 'In Progress'"
+              [severity]="getSeverity(session)"
+              class="absolute dark:!bg-surface-900"
+              [style.left.px]="4"
+              [style.top.px]="4"
+            />
+            <i
+              class="pi"
+              [ngClass]="session.completed ? 'pi-check-circle text-green-500' : 'pi-clock text-yellow-500'"
+              style="font-size: 2rem"
+            ></i>
+          </div>
+
+          <div class="flex flex-col md:flex-row justify-between md:items-center flex-1 gap-6">
+            <div class="flex flex-col gap-1">
+              <div class="text-lg font-medium">Session #{{ session.sessionId }}</div>
+              <p class="text-sm text-surface-600 dark:text-surface-400">
+                <strong>Module:</strong> {{ session.moduleId }}
+              </p>
+              <p class="text-sm text-surface-600 dark:text-surface-400">
+                <strong>Accuracy:</strong> {{ session.accuracy }}%
+              </p>
+              <p class="text-sm text-surface-600 dark:text-surface-400">
+                <strong>WPM:</strong> {{ session.wpm }}
+              </p>
+              <p class="text-sm text-surface-600 dark:text-surface-400">
+                <strong>Time Taken:</strong> {{ session.timeTaken }}
+              </p>
+              <p class="text-sm text-surface-600 dark:text-surface-400">
+                <strong>Date:</strong> {{ session.dateTime }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ng-template>
+
+    <!-- ✅ GRID VIEW -->
+    <ng-template #grid let-items>
+      <div class="grid grid-cols-12 gap-4">
+        <div *ngFor="let session of items" class="col-span-12 sm:col-span-6 md:col-span-4 xl:col-span-6 p-2">
+          <div
+            class="p-6 border border-surface-200 dark:border-surface-700 rounded flex flex-col bg-surface-0 dark:bg-surface-900"
+          >
+            <div class="text-center">
+              <i
+                class="pi"
+                [ngClass]="session.completed ? 'pi-check-circle text-green-500' : 'pi-clock text-yellow-500'"
+                style="font-size: 2rem"
+              ></i>
+              <p-tag
+                [value]="session.completed ? 'Completed' : 'In Progress'"
+                [severity]="getSeverity(session)"
+                class="mt-2"
+              ></p-tag>
+            </div>
+
+            <div class="pt-4 flex flex-col gap-2 text-center">
+              <div class="text-lg font-medium">Session #{{ session.sessionId }}</div>
+              <p class="text-sm"><strong>Module:</strong> {{ session.moduleId }}</p>
+              <p class="text-sm"><strong>Accuracy:</strong> {{ session.accuracy }}%</p>
+              <p class="text-sm"><strong>WPM:</strong> {{ session.wpm }}</p>
+              <p class="text-sm"><strong>Time:</strong> {{ session.timeTaken }}</p>
+              <p class="text-sm"><strong>Date:</strong> {{ session.dateTime }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ng-template>
+  </p-dataview>
+</div>

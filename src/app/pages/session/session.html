@@ -1,12 +1,42 @@
-<div class="session-container">
-  <h3>Typing Session</h3>
+<p-toolbar [style]="{ 'border-radius': '3rem', 'padding': '1rem 2.5rem 1rem 1.5rem' }">
+  <ng-template #start>
+    <div class="flex items-center gap-2">
+      <h3>Typing Session</h3>
 
+      <p-button label="Files" text plain />
+      <p-button label="Edit" text plain />
+      <p-button label="View" text plain />
+    </div>
+  </ng-template>
+
+  <ng-template #end>
+    <div class="flex items-center gap-2">
+      @if(!isStarted() && !isPaused() && !isEnded()){
+        <p-button icon="pi pi-play" aria-label="Start"  [pTooltip]="'Start'" tooltipPosition="bottom" (click)="startSession()" severity="success" size="small" />
+      }
+      @if(isStarted() && !isPaused()){
+        <p-button icon="pi pi-pause" aria-label="Pause"  [pTooltip]="'Pause'" tooltipPosition="bottom" (click)="pauseSession()" severity="info" size="small" />
+      }
+      @if(isPaused()){
+        <p-button icon="pi pi-play" aria-label="Resume"  [pTooltip]="'Resume'" tooltipPosition="bottom" (click)="resumeSession()" severity="info" size="small" />
+      }
+      @if(isStarted() || isPaused()){
+        <p-button icon="pi pi-times" aria-label="End"  [pTooltip]="'End'" tooltipPosition="bottom" (click)="endSession()" severity="warn" size="small" />
+      }
+      @if(isStarted() || isPaused() || isEnded()){
+        <p-button icon="pi pi-refresh" aria-label="Reset"  [pTooltip]="'Reset'" tooltipPosition="bottom" (click)="resetSession()" severity="danger" size="small" />
+      }
+    </div>
+  </ng-template>
+</p-toolbar>
+
+
+
+<div class="session-container">
+  <!-- Text display -->
   <div class="word-display">
-    <span 
-      *ngFor="let char of wordArray(); let i = index"
-      [class.correct]="result()[i] === 'correct'"
-      [class.incorrect]="result()[i] === 'incorrect'"
-      [class.pending]="result()[i] === 'pending'">
+    <span *ngFor="let char of wordArray(); let i = index" [class.correct]="result()[i] === 'correct'"
+      [class.incorrect]="result()[i] === 'incorrect'" [class.pending]="result()[i] === 'pending'">
       {{ char }}
     </span>
   </div>
@@ -17,11 +47,10 @@
   </div>
 </div>
 
-<!-- Fixed bottom keyboard layout -->
+<!-- Keyboard layout view -->
 <div class="keyboard-wrapper">
-  <app-layout-view
-    [keyMapping]="keyMapping"
-    [isShiftActive]="isShiftActive()"
-    [expectedKeyId]="expectedKeyId()">
+  <app-layout-view [keyMapping]="keyMapping" [isShiftActive]="isShiftActive()" [expectedKeyId]="expectedKeyId()">
   </app-layout-view>
 </div>
+
+

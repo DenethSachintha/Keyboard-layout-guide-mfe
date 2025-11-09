@@ -1,14 +1,7 @@
 import { Component, Input, signal, computed } from '@angular/core';
 import { ImportsModule } from '../../../imports';
 import { CommonModule } from '@angular/common';
-
-export interface KeyMapping {
-  id: number;
-  systemKey: string;
-  virtualKey: string;
-  systemShift?: string; // new optional field for Shift output
-  virtualShift?: string; // new optional field for Shift output
-}
+import { KeyMapping } from '../../../models/KeyMapping';
 
 @Component({
   selector: 'app-layout-view',

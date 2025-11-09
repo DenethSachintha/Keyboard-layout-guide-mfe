@@ -1,0 +1,37 @@
+
+.page-title {
+  font-size: 1.8rem;
+  color: #333;
+}
+
+.cards-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.tutorial-card {
+  transition: transform 0.3s ease;
+}
+
+.tutorial-card:hover {
+  transform: translateY(-5px);
+}
+
+.tutorial-image {
+  height: 180px;
+  object-fit: cover;
+}
+
+.details {
+  text-align: left;
+  margin-top: 1rem;
+  font-size: 0.95rem;
+  color: #555;
+}
+
+.description {
+  text-align: left;
+  color: #444;
+}
