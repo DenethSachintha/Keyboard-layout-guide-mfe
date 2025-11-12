@@ -64,10 +64,9 @@ Important::do not change <p-toolbar and  other existing features in this ccompon
 
 */
 
-import { Component, HostListener, signal, computed, OnInit, NgZone } from '@angular/core';
+import { Component, HostListener, signal, computed, OnInit } from '@angular/core';
 import { LayoutView } from '../../common/components/layout-view/layout-view';
 import { CommonModule } from '@angular/common';
-import { KeyMapping } from '../../models/key-mapping';
 import { ImportsModule } from '../../imports';
 import { KeyMappingService } from '../services/key-mapping.service';
 import { Module } from '../../models/module';
@@ -75,6 +74,7 @@ import { ActivatedRoute } from '@angular/router';
 import { ModuleService } from '../services/module.service';
 import { SessionRecord } from '../../models/session-record ';
 import { SessionService } from '../services/session.service';
+import { KeyMapping } from '../../models/key-mapping';
 
 @Component({
   selector: 'app-session',
@@ -96,7 +96,6 @@ export class Session implements OnInit {
   currentStep = signal<number>(0); // step index (0-based)
   isShiftActive = signal<boolean>(false);
   expectedKeyId = signal<number | null>(null);
-  keyMapping: KeyMapping[] = [];
   // Session flags
   isStarted = signal<boolean>(false); // overall session started
   isPaused = signal<boolean>(false);
@@ -120,28 +119,29 @@ export class Session implements OnInit {
     })
   );
 
+  keyMapping = signal<KeyMapping[]>([]); // ✅ reactive signal
+
   constructor(
     private route: ActivatedRoute,
     private moduleService: ModuleService,
     private keyService: KeyMappingService,
-    private sessionService: SessionService,
-    private zone: NgZone
+    private sessionService: SessionService
   ) {}
+
   ngOnInit(): void {
     this.moduleId = Number(this.route.snapshot.paramMap.get('id'));
-
     this.loadModule();
     this.loadKeyMapping();
     this.loadStep(0);
   }
+
   private loadModule(): void {
     this.moduleService.getModules().subscribe({
       next: (modules) => {
         this.currentModule = modules.find((m) => m.moduleId === this.moduleId);
-
         if (this.currentModule) {
           this.sentences.set(this.currentModule.sentenceArray);
-          console.log('Loaded sentences:', this.sentences());
+          console.log('✅ Loaded sentences:', this.sentences());
         } else {
           console.error(`❌ Module with ID ${this.moduleId} not found.`);
         }
@@ -150,19 +150,16 @@ export class Session implements OnInit {
     });
   }
 
-  /** ✅ Load key mappings asynchronously */
+  /** ✅ Load key mappings asynchronously (reactive with signals) */
   private async loadKeyMapping(): Promise<void> {
     try {
-      const keys = await this.keyService.getAll(); // async, mocked
-      this.zone.run(() => {
-        this.keyMapping = keys;
-        console.log('Loaded key mappings:', this.keyMapping);
-      });
+      const keys = await this.keyService.getAll();
+      this.keyMapping.set(keys); // <-- signal update triggers child immediately
+      console.log('✅ Loaded key mappings:', this.keyMapping());
     } catch (err) {
       console.error('Failed to load key mappings:', err);
     }
   }
-
   private loadStep(stepIndex: number) {
     // lock step navigation: user cannot switch steps (we honor currentStep only)
     const s = this.sentences()[stepIndex] ?? '';
@@ -295,17 +292,19 @@ export class Session implements OnInit {
       let mappedChar: string | undefined;
 
       if (!this.isShiftActive()) {
-        mapping = this.keyMapping.find((m) => m.systemKey === event.key);
-      } else {
-        mapping = this.keyMapping.find((m) => m.systemShift === event.key);
-      }
+            mapping = this.keyMapping().find((m) => m.systemKey === event.key);
+          } else {
+            mapping = this.keyMapping().find((m) => m.systemShift === event.key);
+          }
 
-      // if mapping not found, allow raw key as fallback (useful for spaces/punctuation)
-      mappedChar = mapping
+      mappedChar = !this.isShiftActive()
+        ? mapping?.virtualKey ?? ''
+        : mapping?.virtualShift ?? mapping?.virtualKey ?? '';
+       /*  mappedChar = mapping
         ? this.isShiftActive() && mapping.virtualShift
           ? mapping.virtualShift
           : mapping.virtualKey
-        : event.key;
+        : event.key; */
 
       // write mappedChar into userInput at currentIndex
       const arr = [...this.userInput()];
@@ -364,40 +363,25 @@ export class Session implements OnInit {
     const cumulativeMinutes = Math.max(1, this.cumulativeActiveTime / 60000); // avoid divide by zero
     const cumulativeWpm = totalWordsCompleted / cumulativeMinutes;
 
-    /*  // session record for this step
     const rec: SessionRecord = {
-      stepIndex,
-      sentence,
-      accuracyPct: Number(accuracyPct.toFixed(2)),
-      wpm: Number(cumulativeWpm.toFixed(2)),
-      stepTimeSeconds: Number((stepDurationMs / 1000).toFixed(2)),
-      dateTime: new Date().toISOString(),
-      completed: true,
-    };
+    sessionId: 0,
+    moduleId: this.moduleId,
+    stepIndex,
+    sentence,
+    accuracy: Number(accuracyPct.toFixed(2)),
+    wpm: Number(cumulativeWpm.toFixed(2)),
+    stepTimeSeconds: Number((stepDurationMs / 1000).toFixed(2)),
+    dateTime: new Date().toISOString(),
+    isCompleted: true,
+  };
 
-    this.sessionRecords.push(rec);
-    console.log(`Step ${stepIndex + 1} completed:`, rec);
-    console.log('All sessionRecords so far:', this.sessionRecords); */
+  // Save locally
+  this.sessionRecords.push(rec);
 
-    const rec: SessionRecord = {
-      sessionId: 0,
-      moduleId: this.moduleId,
-      stepIndex,
-      sentence,
-      accuracy: Number(accuracyPct.toFixed(2)),
-      wpm: Number(cumulativeWpm.toFixed(2)),
-      stepTimeSeconds: Number((stepDurationMs / 1000).toFixed(2)),
-      dateTime: new Date().toISOString(),
-      isCompleted: true,
-    };
+  // ✅ Send to service (mocked POST)
+  this.saveSessionStep(rec);
 
-    // Save locally
-    this.sessionRecords.push(rec);
-
-    // ✅ Send to service (mocked POST)
-    this.saveSessionStep(rec);
-
-    // auto-advance
+  // auto-advance
 
     // auto-advance to next step if available
     const next = stepIndex + 1;
@@ -412,12 +396,12 @@ export class Session implements OnInit {
       this.endSession();
     }
   }
-  private saveSessionStep(step: SessionRecord) {
-    this.sessionService.addSessionStep(step).subscribe({
-      next: (res) => console.log('Session step saved via service:', res),
-      error: (err) => console.error('Failed to save session step:', err),
-    });
-  }
+private saveSessionStep(step: SessionRecord) {
+  this.sessionService.addSessionStep(step).subscribe({
+    next: (res) => console.log('Session step saved via service:', res),
+    error: (err) => console.error('Failed to save session step:', err),
+  });
+}
   // -------------------------
   // Helpers
   // -------------------------
@@ -427,7 +411,7 @@ export class Session implements OnInit {
       this.expectedKeyId.set(null);
       return;
     }
-    const found = this.keyMapping.find(
+    const found = this.keyMapping().find(
       (m) => m.virtualKey.toLowerCase() === nextChar.toLowerCase()
     );
     this.expectedKeyId.set(found ? found.id : null);

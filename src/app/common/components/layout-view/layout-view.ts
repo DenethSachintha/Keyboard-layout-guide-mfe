@@ -1,4 +1,11 @@
-import { Component, Input, signal, computed, SimpleChanges, OnChanges, OnInit } from '@angular/core';
+import {
+  Component,
+  Input,
+  signal,
+  computed,
+  OnInit,
+  effect,
+} from '@angular/core';
 import { ImportsModule } from '../../../imports';
 import { CommonModule } from '@angular/common';
 import { KeyMapping } from '../../../models/key-mapping';
@@ -9,43 +16,34 @@ import { KeyMapping } from '../../../models/key-mapping';
   templateUrl: './layout-view.html',
   styleUrl: './layout-view.scss',
 })
-export class LayoutView implements OnInit, OnChanges {
-  private _keyMapping: KeyMapping[] = [];
-
-  @Input()
-  set keyMapping(value: KeyMapping[]) {
-    this._keyMapping = value || [];
-    if (this._keyMapping.length) {
-      this.processKeyMapping();
-      console.log('Processing keyMapping via setter:', this._keyMapping);
-    }
-  }
-  get keyMapping(): KeyMapping[] {
-    return this._keyMapping;
-  }
-
+export class LayoutView implements OnInit {
+  @Input({ required: true }) keyMapping!: ReturnType<typeof signal<KeyMapping[]>>; // ✅ reactive signal input
   @Input() isShiftActive = false;
   @Input() expectedKeyId: number | null = null;
 
   activeKeys = signal<Record<number, boolean>>({});
 
+  constructor() {
+    // ✅ Automatically react to keyMapping changes
+    effect(() => {
+      const keys = this.keyMapping();
+      if (keys.length > 0) {
+        this.processKeyMapping(keys);
+        console.log('🔄 Reactive keyMapping update detected in child:', keys);
+      }
+    });
+  }
+
   ngOnInit(): void {
-    if (this.keyMapping.length) {
-      this.processKeyMapping();
-      console.log('Processing keyMapping on init:', this.keyMapping);
+    if (this.keyMapping().length) {
+      this.processKeyMapping(this.keyMapping());
+      console.log('✅ Processing keyMapping on init:', this.keyMapping());
     }
   }
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['keyMapping'] && changes['keyMapping'].currentValue?.length) {
-      this.processKeyMapping();
-      console.log('Processing keyMapping via ngOnChanges:', this.keyMapping);
-    }
-  }
-
-  private processKeyMapping(): void {
+  private processKeyMapping(keys: KeyMapping[]): void {
     const newActiveKeys: Record<number, boolean> = {};
-    for (const key of this.keyMapping) {
+    for (const key of keys) {
       newActiveKeys[key.id] = false;
     }
     this.activeKeys.set(newActiveKeys);
@@ -55,15 +53,16 @@ export class LayoutView implements OnInit, OnChanges {
     const rowBreaks = [14, 28, 41, 53, 61];
     const rows: KeyMapping[][] = [];
     let start = 0;
+    const keys = this.keyMapping();
     for (const end of rowBreaks) {
-      rows.push(this.keyMapping.slice(start, end));
+      rows.push(keys.slice(start, end));
       start = end;
     }
     return rows;
   }
 
   highlightKey(key: string, state: boolean) {
-    const found = this.keyMapping.find(
+    const found = this.keyMapping().find(
       (k) => k.systemKey.toLowerCase() === key.toLowerCase()
     );
     if (found) {

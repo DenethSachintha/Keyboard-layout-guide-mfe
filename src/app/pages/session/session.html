@@ -1,7 +1,9 @@
-<p-toolbar [style]="{ 'border-radius': '3rem', 'padding': '1rem 2.5rem 1rem 1.5rem', 'margin-bottom': '2rem' }">
+<div class="flex flex-col" style="height: calc(100vh - 81px);">
+  
+  <p-toolbar [style]="{ 'border-radius': '3rem', 'padding': '1rem 2.5rem 1rem 1.5rem', 'margin-bottom': '1rem' }">
   <ng-template #start>
-    <div class="flex items-center gap-2">
-      <h3>Typing Session</h3>
+     <div class="flex items-center gap-2">
+      <span class="page-title">Typing Modules</span>
     </div>
   </ng-template>
 
@@ -73,7 +75,7 @@
   </p-stepper>
 </div>
 <!-- Debug / Records panel -->
-<div class="mt-4">
+<!-- <div class="mt-4">
   <h4>Session Records</h4>
   <ul>
     <li *ngFor="let rec of sessionRecords">
@@ -81,12 +83,18 @@
       {{ rec.stepTimeSeconds }}s — {{ rec.dateTime }}
     </li>
   </ul>
+</div> -->
+
+<div class="wrapper">
+  <div class="content">
+    <!-- Keyboard layout -->
+    <div class="keyboard-wrapper">
+      <app-layout-view
+        [keyMapping]="keyMapping"
+        [isShiftActive]="isShiftActive()"
+        [expectedKeyId]="expectedKeyId()"
+      ></app-layout-view>
+    </div>
+  </div>
 </div>
-
-<!-- Keyboard layout view -->
-<div class="keyboard-wrapper mt-4">
-  <app-layout-view [keyMapping]="keyMapping" [isShiftActive]="isShiftActive()" [expectedKeyId]="expectedKeyId()">
-  </app-layout-view>
 </div>
-
-
