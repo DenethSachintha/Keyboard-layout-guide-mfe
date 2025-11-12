@@ -7,60 +7,78 @@
 // hardcode some sample sessions data here
 // use primeng components similar to modules pages
 // no buttons for navigation needed here
-// session has following details:
-// - session id
-// - module id  
-// - acccuracy
-// - wpm
-// - time taken
-// - date time
-// - completed (boolean)
-import { Component } from '@angular/core';
+
+
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ImportsModule } from '../../imports'; // assuming you have a central ImportsModule
+import { ImportsModule } from '../../imports';
+import { ActivatedRoute } from '@angular/router';
+import { SessionService } from '../services/session.service';
+import { SessionRecord } from '../../models/session-record ';
+import { ModuleService } from '../services/module.service';
+import { Module } from '../../models/module';
+import { SessionSummary } from '../../models/session-summary ';
+import { summarizeSessions } from '../../common/utils/session-summary.util';
+
 
 @Component({
   selector: 'app-sessions',
   standalone: true,
   imports: [CommonModule, ImportsModule],
   templateUrl: './sessions.html',
-  styleUrls: ['./sessions.scss']
+  styleUrls: ['./sessions.scss'],
 })
-export class Sessions {
+export class Sessions implements OnInit {
   layout: 'list' | 'grid' = 'list';
   options = ['list', 'grid'];
 
-  sessions = [
-    {
-      sessionId: 1,
-      moduleId: 101,
-      accuracy: 85,
-      wpm: 42,
-      timeTaken: '5m 30s',
-      dateTime: '2025-11-07 10:15 AM',
-      completed: true
-    },
-    {
-      sessionId: 2,
-      moduleId: 101,
-      accuracy: 78,
-      wpm: 38,
-      timeTaken: '6m 10s',
-      dateTime: '2025-11-07 12:20 PM',
-      completed: false
-    },
-    {
-      sessionId: 3,
-      moduleId: 102,
-      accuracy: 90,
-      wpm: 50,
-      timeTaken: '4m 45s',
-      dateTime: '2025-11-08 09:05 AM',
-      completed: true
-    }
-  ];
+  moduleId!: number;
+  sessions: SessionRecord[] = [];
+  sessionSummaries: SessionSummary[] = [];
+  isLoading = true;
+  module?: Module;
 
-  getSeverity(session: any) {
-    return session.completed ? 'success' : 'warn';
+  constructor(
+    private route: ActivatedRoute,
+    private sessionService: SessionService,
+     private moduleService: ModuleService
+  ) {}
+
+  ngOnInit(): void {
+    this.moduleId = Number(this.route.snapshot.paramMap.get('id'));
+     this.loadModuleAndSessions();
+  }
+
+  /** ✅ Load sessions for a given module */
+   private loadModuleAndSessions(): void {
+    this.isLoading = true;
+
+    // Load module
+    this.moduleService.getModules().subscribe({
+      next: (modules) => {
+        this.module = modules.find((m) => m.moduleId === this.moduleId);
+        if (!this.module) console.warn('Module not found:', this.moduleId);
+      },
+      error: (err) => console.error('Failed to load module:', err),
+    });
+
+    // Load sessions
+    this.sessionService.getSessionsByModuleId(this.moduleId).subscribe({
+      next: (sessions) => {
+        this.sessions = sessions;
+        this.sessionSummaries = summarizeSessions(sessions); // ✅ summarized version
+        this.isLoading = false;
+        console.log(`✅ Loaded sessions for module ${this.moduleId}:`, this.sessions);
+      },
+      error: (err) => {
+        console.error('Failed to load sessions:', err);
+        this.isLoading = false;
+      },
+    });
+  }
+
+  /** ✅ Severity for PrimeNG badges */
+  getSeverity(session: SessionRecord): any {
+    return session.isCompleted ? 'success' : 'warn';
   }
 }
